@@ -6,3 +6,7 @@ vite.config.ts.*
 *.tar.gz
 .env
 *.env
+
+# Sensitive files
+inner-period.json
+.config/.semgrep/semgrep_rules.json
