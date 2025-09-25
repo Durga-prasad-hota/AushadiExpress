@@ -1,0 +1,459 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pharma-Empire OS - Offline-First Pharmacy POS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                borderRadius: {
+                    lg: "var(--radius)",
+                    md: "calc(var(--radius) - 2px)",
+                    sm: "calc(var(--radius) - 4px)",
+                },
+                colors: {
+                    background: "var(--background)",
+                    foreground: "var(--foreground)",
+                    card: {
+                        DEFAULT: "var(--card)",
+                        foreground: "var(--card-foreground)",
+                    },
+                    popover: {
+                        DEFAULT: "var(--popover)",
+                        foreground: "var(--popover-foreground)",
+                    },
+                    primary: {
+                        DEFAULT: "var(--primary)",
+                        foreground: "var(--primary-foreground)",
+                    },
+                    secondary: {
+                        DEFAULT: "var(--secondary)",
+                        foreground: "var(--secondary-foreground)",
+                    },
+                    muted: {
+                        DEFAULT: "var(--muted)",
+                        foreground: "var(--muted-foreground)",
+                    },
+                    accent: {
+                        DEFAULT: "var(--accent)",
+                        foreground: "var(--accent-foreground)",
+                    },
+                    destructive: {
+                        DEFAULT: "var(--destructive)",
+                        foreground: "var(--destructive-foreground)",
+                    },
+                    border: "var(--border)",
+                    input: "var(--input)",
+                    ring: "var(--ring)",
+                }
+            },
+            fontFamily: {
+                sans: ["Inter", "system-ui", "sans-serif"],
+            }
+        },
+    };
+    </script>
+    <style>
+        :root {
+            --background: hsl(210 40% 98%);
+            --foreground: hsl(222.2 84% 4.9%);
+            --card: hsl(0 0% 100%);
+            --card-foreground: hsl(222.2 84% 4.9%);
+            --popover: hsl(0 0% 100%);
+            --popover-foreground: hsl(222.2 84% 4.9%);
+            --primary: hsl(210 100% 40%);
+            --primary-foreground: hsl(210 40% 98%);
+            --secondary: hsl(210 40% 96%);
+            --secondary-foreground: hsl(222.2 84% 4.9%);
+            --muted: hsl(210 40% 96%);
+            --muted-foreground: hsl(215.4 16.3% 46.9%);
+            --accent: hsl(210 40% 96%);
+            --accent-foreground: hsl(222.2 84% 4.9%);
+            --destructive: hsl(0 84.2% 60.2%);
+            --destructive-foreground: hsl(210 40% 98%);
+            --border: hsl(214.3 31.8% 91.4%);
+            --input: hsl(214.3 31.8% 91.4%);
+            --ring: hsl(210 100% 40%);
+            --radius: 0.75rem;
+        }
+
+        .material-icons {
+            font-family: 'Material Icons';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .elevation-1 {
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+        }
+        
+        .elevation-2 {
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+        }
+
+        .app-bar {
+            background: linear-gradient(135deg, hsl(210 100% 40%) 0%, hsl(210 100% 35%) 100%);
+        }
+
+        .status-online {
+            background: hsl(120 60% 50%);
+        }
+
+        .status-offline {
+            background: hsl(0 60% 50%);
+        }
+
+        .status-syncing {
+            background: hsl(45 100% 50%);
+        }
+    </style>
+</head>
+<body class="bg-background font-sans text-foreground min-h-screen">
+    <!-- @COMPONENT: App [main application container] -->
+    <div class="flex flex-col h-screen overflow-hidden">
+        
+        <!-- @COMPONENT: AppBar [top navigation with sync status] -->
+        <header class="app-bar text-primary-foreground px-4 py-3 elevation-2 relative">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <span class="material-icons">local_pharmacy</span>
+                    <div>
+                        <h1 class="text-lg font-semibold">Pharma-Empire OS</h1>
+                        <p class="text-xs opacity-90" data-bind="currentStore.name">MediCare Pharmacy</p>
+                    </div>
+                </div>
+                
+                <!-- @COMPONENT: SyncStatus [connectivity and sync indicator] -->
+                <div class="flex items-center space-x-2">
+                    <div class="flex items-center space-x-1">
+                        <div class="w-2 h-2 rounded-full status-online" data-bind="connectionStatus"></div>
+                        <span class="text-xs" data-mock="true">Online</span>
+                    </div>
+                    <button class="p-1 rounded-full hover:bg-white/10 transition-colors" data-event="click:showSyncDetails">
+                        <span class="material-icons text-sm">sync</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- @STATE: showSyncDetails:boolean = false -->
+            <!-- Sync status details dropdown (hidden by default) -->
+            <div class="absolute top-full right-4 mt-1 bg-card text-card-foreground rounded-lg shadow-lg p-3 min-w-48 elevation-2 hidden" data-bind="showSyncDetails">
+                <div class="text-sm space-y-2">
+                    <div class="flex justify-between">
+                        <span>Last Sync:</span>
+                        <span class="text-muted-foreground" data-bind="lastSyncTime" data-mock="true">2 min ago</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Pending Items:</span>
+                        <span class="text-accent-foreground font-medium" data-bind="pendingSyncCount" data-mock="true">3</span>
+                    </div>
+                    <div class="text-xs text-muted-foreground">
+                        <span data-mock="true">Next sync in 28s</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- @COMPONENT: MainContent [scrollable content area] -->
+        <main class="flex-1 overflow-y-auto p-4 space-y-6">
+            
+            <!-- @COMPONENT: QuickActions [primary action cards] -->
+            <section class="grid grid-cols-2 gap-4">
+                <button class="bg-primary text-primary-foreground p-4 rounded-lg elevation-1 hover:elevation-2 transition-all duration-200 flex flex-col items-center space-y-2" data-event="click:navigateToSale">
+                    <span class="material-icons text-3xl">point_of_sale</span>
+                    <span class="font-medium">New Sale</span>
+                </button>
+                
+                <button class="bg-card text-card-foreground p-4 rounded-lg elevation-1 hover:elevation-2 transition-all duration-200 flex flex-col items-center space-y-2 border border-border" data-event="click:navigateToInventory">
+                    <span class="material-icons text-3xl">inventory_2</span>
+                    <span class="font-medium">Inventory</span>
+                </button>
+            </section>
+            
+            <!-- @COMPONENT: DashboardStats [key metrics overview] -->
+            <section class="grid grid-cols-2 gap-4">
+                <div class="bg-card rounded-lg p-4 elevation-1">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-muted-foreground">Today's Sales</p>
+                            <p class="text-2xl font-bold text-foreground" data-bind="todaySales" data-mock="true">₹8,450</p>
+                        </div>
+                        <span class="material-icons text-primary">trending_up</span>
+                    </div>
+                </div>
+                
+                <div class="bg-card rounded-lg p-4 elevation-1">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-muted-foreground">Low Stock Items</p>
+                            <p class="text-2xl font-bold text-destructive" data-bind="lowStockCount" data-mock="true">7</p>
+                        </div>
+                        <span class="material-icons text-destructive">warning</span>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- @COMPONENT: RecentTransactions [transaction history] -->
+            <section class="bg-card rounded-lg elevation-1">
+                <div class="p-4 border-b border-border">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-lg font-semibold">Recent Transactions</h2>
+                        <button class="text-primary text-sm font-medium" data-event="click:viewAllTransactions">
+                            View All
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="divide-y divide-border">
+                    <!-- @MAP: recentTransactions.map(transaction => ( -->
+                    <div class="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                <span class="material-icons text-primary text-lg">receipt</span>
+                            </div>
+                            <div>
+                                <p class="font-medium" data-bind="transaction.id" data-mock="true">TXN-001234</p>
+                                <p class="text-sm text-muted-foreground" data-bind="transaction.timestamp" data-mock="true">Today, 2:30 PM</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-semibold" data-bind="transaction.total" data-mock="true">₹285.50</p>
+                            <div class="flex items-center space-x-1">
+                                <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                                <span class="text-xs text-muted-foreground" data-mock="true">Synced</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                <span class="material-icons text-primary text-lg">receipt</span>
+                            </div>
+                            <div>
+                                <p class="font-medium" data-mock="true">TXN-001233</p>
+                                <p class="text-sm text-muted-foreground" data-mock="true">Today, 1:45 PM</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-semibold" data-mock="true">₹1,125.00</p>
+                            <div class="flex items-center space-x-1">
+                                <div class="w-2 h-2 rounded-full bg-yellow-500"></div>
+                                <span class="text-xs text-muted-foreground" data-mock="true">Pending</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                <span class="material-icons text-primary text-lg">receipt</span>
+                            </div>
+                            <div>
+                                <p class="font-medium" data-mock="true">TXN-001232</p>
+                                <p class="text-sm text-muted-foreground" data-mock="true">Today, 12:20 PM</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-semibold" data-mock="true">₹67.50</p>
+                            <div class="flex items-center space-x-1">
+                                <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                                <span class="text-xs text-muted-foreground" data-mock="true">Synced</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- @END_MAP )) -->
+                </div>
+            </section>
+            
+            <!-- @COMPONENT: QuickAddProduct [demo product addition] -->
+            <section class="bg-card rounded-lg elevation-1 p-4">
+                <h3 class="text-lg font-semibold mb-4">Quick Add Product (Demo)</h3>
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-muted-foreground mb-1">Product Name</label>
+                            <input type="text" placeholder="Enter product name" class="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring" data-mock="true" value="Paracetamol 500mg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-muted-foreground mb-1">Batch Number</label>
+                            <input type="text" placeholder="Batch #" class="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring" data-mock="true" value="B2024001">
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-muted-foreground mb-1">Quantity</label>
+                            <input type="number" placeholder="0" class="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring" data-mock="true" value="100">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-muted-foreground mb-1">Expiry Date</label>
+                            <input type="date" class="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring" data-mock="true" value="2025-12-31">
+                        </div>
+                    </div>
+                    
+                    <button class="w-full bg-primary text-primary-foreground py-3 rounded-md font-medium hover:bg-primary/90 transition-colors elevation-1" data-event="click:addDemoProduct" data-implementation="Should add product to local WatermelonDB and outbox for sync">
+                        <span class="flex items-center justify-center space-x-2">
+                            <span class="material-icons">add</span>
+                            <span>Add Demo Product</span>
+                        </span>
+                    </button>
+                </div>
+            </section>
+            
+            <!-- @COMPONENT: AIFeatures [future AI capabilities preview] -->
+            <section class="bg-gradient-to-r from-accent to-muted rounded-lg p-4 elevation-1">
+                <div class="flex items-center space-x-3 mb-3">
+                    <span class="material-icons text-accent-foreground">psychology</span>
+                    <h3 class="text-lg font-semibold text-accent-foreground">AI Assistant (Coming Soon)</h3>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="bg-card/80 rounded-lg p-3 text-center">
+                        <span class="material-icons text-muted-foreground mb-1">record_voice_over</span>
+                        <p class="text-xs text-muted-foreground font-medium">Voice Commands</p>
+                    </div>
+                    <div class="bg-card/80 rounded-lg p-3 text-center">
+                        <span class="material-icons text-muted-foreground mb-1">document_scanner</span>
+                        <p class="text-xs text-muted-foreground font-medium">OCR Scanning</p>
+                    </div>
+                    <div class="bg-card/80 rounded-lg p-3 text-center">
+                        <span class="material-icons text-muted-foreground mb-1">smart_toy</span>
+                        <p class="text-xs text-muted-foreground font-medium">Smart Suggestions</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <!-- @COMPONENT: BottomNavigation [main navigation tabs] -->
+        <nav class="bg-card border-t border-border px-4 py-2 elevation-2">
+            <div class="flex justify-around">
+                <button class="flex flex-col items-center space-y-1 py-2 px-4 text-primary" data-event="click:navigateToHome">
+                    <span class="material-icons">home</span>
+                    <span class="text-xs font-medium">Home</span>
+                </button>
+                
+                <button class="flex flex-col items-center space-y-1 py-2 px-4 text-muted-foreground hover:text-foreground transition-colors" data-event="click:navigateToProducts">
+                    <span class="material-icons">medication</span>
+                    <span class="text-xs">Products</span>
+                </button>
+                
+                <button class="flex flex-col items-center space-y-1 py-2 px-4 text-muted-foreground hover:text-foreground transition-colors" data-event="click:navigateToSales">
+                    <span class="material-icons">assessment</span>
+                    <span class="text-xs">Sales</span>
+                </button>
+                
+                <button class="flex flex-col items-center space-y-1 py-2 px-4 text-muted-foreground hover:text-foreground transition-colors" data-event="click:navigateToSettings">
+                    <span class="material-icons">settings</span>
+                    <span class="text-xs">Settings</span>
+                </button>
+            </div>
+        </nav>
+        
+        <!-- @COMPONENT: FloatingActionButton [new sale shortcut] -->
+        <button class="fixed bottom-20 right-4 w-14 h-14 bg-primary text-primary-foreground rounded-full elevation-2 hover:elevation-3 transition-all duration-200 flex items-center justify-center" data-event="click:quickNewSale">
+            <span class="material-icons">add_shopping_cart</span>
+        </button>
+    </div>
+    <!-- @END_COMPONENT: App -->
+    
+    <!-- @COMPONENT: OfflineIndicator [connection status toast] -->
+    <div class="fixed top-16 left-4 right-4 bg-destructive text-destructive-foreground p-3 rounded-lg elevation-2 hidden" data-bind="showOfflineIndicator" data-implementation="Show when NetInfo detects offline state">
+        <div class="flex items-center space-x-2">
+            <span class="material-icons">cloud_off</span>
+            <span class="text-sm font-medium">You're offline. Changes will sync when connected.</span>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: OfflineIndicator -->
+    
+    <script>
+        // TODO: Implement WatermelonDB integration
+        // TODO: Implement sync worker background processing
+        // TODO: Implement NetInfo connectivity detection
+        // TODO: Implement AI assistant hooks
+        // TODO: Implement navigation between screens
+        
+        (function() {
+            // Demo interaction handlers for mockup purposes
+            const buttons = document.querySelectorAll('[data-event]');
+            buttons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    const event = this.getAttribute('data-event');
+                    console.log(`Event triggered: ${event}`);
+                    
+                    // Demo visual feedback
+                    this.style.transform = 'scale(0.98)';
+                    setTimeout(() => {
+                        this.style.transform = 'scale(1)';
+                    }, 150);
+                });
+            });
+            
+            // Demo sync status animation
+            const syncIcon = document.querySelector('[data-event="click:showSyncDetails"] .material-icons');
+            setInterval(() => {
+                if (syncIcon) {
+                    syncIcon.style.animation = 'spin 1s linear';
+                    setTimeout(() => {
+                        syncIcon.style.animation = '';
+                    }, 1000);
+                }
+            }, 30000); // 30 second intervals like the real sync worker
+            
+            // Demo offline/online status simulation
+            let isOnline = true;
+            const statusIndicator = document.querySelector('.status-online');
+            const statusText = statusIndicator?.nextElementSibling;
+            const offlineToast = document.querySelector('[data-bind="showOfflineIndicator"]');
+            
+            // Simulate connectivity changes for demo
+            setInterval(() => {
+                if (Math.random() < 0.1) { // 10% chance to change status
+                    isOnline = !isOnline;
+                    if (statusIndicator && statusText) {
+                        if (isOnline) {
+                            statusIndicator.className = statusIndicator.className.replace('status-offline', 'status-online');
+                            statusText.textContent = 'Online';
+                            if (offlineToast) {
+                                offlineToast.classList.add('hidden');
+                            }
+                        } else {
+                            statusIndicator.className = statusIndicator.className.replace('status-online', 'status-offline');
+                            statusText.textContent = 'Offline';
+                            if (offlineToast) {
+                                offlineToast.classList.remove('hidden');
+                                setTimeout(() => {
+                                    offlineToast.classList.add('hidden');
+                                }, 3000);
+                            }
+                        }
+                    }
+                }
+            }, 5000);
+        })();
+        
+        // CSS animation for sync icon
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
